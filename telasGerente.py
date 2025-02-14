@@ -74,7 +74,7 @@ def telaAlterarDados(cur, conn, id, root):
         root.destroy()
     
     root = tk.Tk()
-    root.title("Alterar Dados do Cliente")
+    root.title("Alterar Dados do Gerente")
     root.geometry("300x200")
     
     tk.Label(root, text="Escolha o dado a alterar:").pack()
@@ -123,6 +123,11 @@ def contratarAtendente(cur, conn, id, root):
         INSERT INTO Atendente (Id_Funcionario, numero_vendas_mes)
         VALUES (%s, %s);
         """, (id_funcionario, 0))
+
+        cur.execute("""
+        INSERT INTO Atendente_Gerente (Id_atendente, id_gerente)
+        VALUES (%s, %s);
+        """, (id_funcionario, id))
         
         conn.commit()
         messagebox.showinfo("Atendente", f"Cadastro realizado com sucesso. Id do atendente: {id_funcionario}")
@@ -152,7 +157,7 @@ def contratarAtendente(cur, conn, id, root):
     
     root.mainloop()
 
-def reporItem(cur, conn, root):
+def adicionarItem(cur, conn, root):
 
     def repor(cur, conn,nome_entry, preco_entry, quantidade_estoque_entry, tipo_entry):
         nome = nome_entry.get()
@@ -171,15 +176,7 @@ def reporItem(cur, conn, root):
         produto = cur.fetchone()
 
         if produto:
-            id_produto, estoque_atual = produto
-            novo_estoque = estoque_atual + quantidade_estoque
-            cur.execute("""
-                UPDATE Produto 
-                SET Quantidade_Estoque = %s, Preco = %s, Tipo_produto = %s
-                WHERE Id_Produto = %s
-            """, (novo_estoque, preco, tipo, id_produto))
-            conn.commit()
-            messagebox.showinfo("Sucesso", "Produto atualizado com sucesso")
+            messagebox.showerror("Erro", "Produto com mesmo nome já cadastrado")
         else:
             cur.execute("""
                 INSERT INTO Produto (Nome, Preco, Quantidade_Estoque, Tipo_produto)
@@ -212,7 +209,7 @@ def reporItem(cur, conn, root):
     
     root.mainloop()
 
-def reporListaItens(cur, conn, root):
+def adicionarListaItens(cur, conn, root):
 
     def reporLista(cur, conn, arquivo):
         arquivo = arquivo.get()
@@ -265,6 +262,57 @@ def reporListaItens(cur, conn, root):
     tk.Button(root, text="Confirmar", command=lambda: (reporLista(cur, conn, arquivo_entry), root.destroy)).pack()
     
     root.mainloop()
+
+def reporItem(cur, conn, root, id):
+    
+    def obter_produtos(cur): 
+        cur.execute("SELECT * FROM produto")  
+
+        return cur.fetchall()
+    
+    def repor(cur, conn, campo_var, entrada_valor):
+        produto_selecionado = campo_var.get().strip()
+        novo_valor = entrada_valor.get()
+
+        if novo_valor == "":
+            messagebox.showerror("Erro", f"Opção inválida! Digite um valor")
+            return
+        
+        cur.execute("SELECT * FROM produto WHERE nome = %s",(produto_selecionado,))
+        prod = cur.fetchone()
+        novo_valor = int(novo_valor) + prod[3]
+        
+        cur.execute("UPDATE produto SET quantidade_estoque = %s WHERE nome = %s", (novo_valor, produto_selecionado))
+        
+        conn.commit()
+        messagebox.showinfo("Sucesso", f"{produto_selecionado} alterado com sucesso!")
+        root.destroy()
+        
+
+    produtos = obter_produtos(cur)
+    produtos_nome = []
+    for produto in produtos:
+        produtos_nome.append(produto[1])
+
+    root = tk.Tk()
+    root.title("Repor item")
+    root.geometry("300x200")
+    
+    tk.Label(root, text="Escolha o produto para repor:").pack()
+    
+    opcoes = produtos_nome
+    campo_var = tk.StringVar(root)
+    campo_var.set(opcoes[0])  
+    
+    option_menu = tk.OptionMenu(root, campo_var, *opcoes)
+    option_menu.pack()
+    
+    tk.Label(root, text="Valor a repor:").pack()
+    entrada_valor = tk.Entry(root)
+    entrada_valor.pack()
+    
+    tk.Button(root, text="Confirmar", command = lambda: repor(cur, conn, campo_var, entrada_valor)).pack(pady=10)
+    tk.Button(root, text="Cancelar", command = lambda: (telaGerenteAcesso(cur, conn, id, root),root.destroy)).pack(pady=10)
 
 def tela_visualizar_produtos(cur):
 
@@ -349,8 +397,9 @@ def telaEstoque(cur, conn, root, id):
     tk.Label(root, text="Sistema de Estoque", font=("Arial", 14)).pack(pady=10)
 
     tk.Button(root, text="Ver estoque", width=20, command= lambda: tela_visualizar_produtos(cur)).pack(pady=5)
-    tk.Button(root, text="Adicionar/repor item", width=20, command= lambda: (reporItem(cur, conn, root))).pack(pady=5)
-    tk.Button(root, text="Adicionar/repor itens", width=20, command= lambda: reporListaItens(cur, conn, root)).pack(pady=5)
+    tk.Button(root, text="Repor item", width=20, command= lambda: (reporItem(cur, conn, root, id))).pack(pady=5)
+    tk.Button(root, text="Adicionar item", width=20, command= lambda: (adicionarItem(cur, conn, root))).pack(pady=5)
+    tk.Button(root, text="Adicionar itens", width=20, command= lambda: adicionarListaItens(cur, conn, root)).pack(pady=5)
     tk.Button(root, text="Sair", width=20, command=lambda: (telaGerenteAcesso(cur, conn, id, root),root.destroy)).pack(pady=20)
 
     root.mainloop()
@@ -389,17 +438,23 @@ def acessar(cur, conn, root):
         try:
             id = int(id)
             cur.execute("SELECT * FROM funcionario WHERE id_funcionario = %s", (id,))
-            cliente = cur.fetchone()
+            funcionario = cur.fetchone()
+
+            cur.execute("""
+                SELECT * FROM Gerente WHERE id_funcionario = %s
+            """, (id,))
+
+            gerente = cur.fetchone()
         
-            if cliente:
-                if cliente[4] == senha:
+            if gerente:
+                if funcionario[4] == senha:
                     telaGerenteAcesso(cur, conn, id, root)
                     root.destroy()
                 else:
                     messagebox.showerror("Erro", "Senha incorreta!")
                     root.destroy()
             else:
-                messagebox.showerror("Erro", "Gerente não encontrado!")
+                messagebox.showerror("Erro", "Gerente não encontrado ou o funcionário não é gerente!")
                 root.destroy()
         
         except ValueError:

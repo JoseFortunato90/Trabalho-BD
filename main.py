@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 import psycopg2
-import telasCliente, telasGerente
+import telasCliente, telasGerente, telasAtendente
 
 def conectar_bd():
     try:
@@ -32,7 +32,7 @@ tk.Label(root, text="Bem-vindo ao Sistema", font=("Arial", 14)).pack(pady=10)
 
 tk.Button(root, text="Cliente", width=20, command= lambda: telasCliente.telaCliente(cur, conn, root)).pack(pady=5)
 tk.Button(root, text="Gerente", width=20, command= lambda: telasGerente.telaGerente(cur, conn, root)).pack(pady=5)
-tk.Button(root, text="Atendente", width=20, command=abrir_tela_atendente).pack(pady=5)
+tk.Button(root, text="Atendente", width=20, command= lambda: telasAtendente.telaAtendente(cur, conn, root)).pack(pady=5)
 tk.Button(root, text="Sair", width=20, command=root.quit).pack(pady=20)
 
 root.mainloop()
