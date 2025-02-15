@@ -8,24 +8,31 @@ def historico_compra():
 def telaAlterarDados(cur, conn, cpf, root):
     root.destroy()
     
-    def alterar_dados_cliente():
+    def alterar_dados_cliente(cur,conn,root):
         campo_selecionado = campo_var.get().strip()
-        novo_valor = entrada_valor.get()
+        novo_valor = entrada_valor.get().strip()
 
-        if novo_valor == "":
-            messagebox.showerror("Erro", f"Opção inválida! Digite um valor")
+        if not novo_valor:
+            messagebox.showerror("Erro", "Opção inválida! Digite um valor.")
             return
-        if campo_selecionado == "Nome":
-            cur.execute("UPDATE Cliente SET nome = %s WHERE Cpf = %s", (novo_valor, cpf))
-        elif campo_selecionado == "Senha":
-            cur.execute("UPDATE Cliente SET senha = %s WHERE Cpf = %s", (novo_valor, cpf))
-        else:
-            messagebox.showerror("Erro", f"Opção inválida! Valor recebido: {campo_selecionado}")
-            return
-        
-        conn.commit()
-        messagebox.showinfo("Sucesso", f"{campo_selecionado} alterado com sucesso!")
+
+        try:
+            if campo_selecionado == "Nome":
+                cur.execute("UPDATE Cliente SET nome = %s WHERE Cpf = %s", (novo_valor, cpf))
+                conn.commit()
+                messagebox.showinfo("Sucesso", "Nome atualizado com sucesso!")
+            elif campo_selecionado == "Senha":
+                cur.execute("UPDATE Cliente SET senha = %s WHERE Cpf = %s", (novo_valor, cpf))
+                conn.commit()
+                messagebox.showinfo("Sucesso", "Senha atualizada com sucesso!")
+            else:
+                messagebox.showerror("Erro", f"Opção inválida! Valor recebido: {campo_selecionado}")
+                return
+        except Exception as e:
+            conn.rollback()
+            messagebox.showerror("Erro", f"Ocorreu um erro ao atualizar os dados: {e}")
         root.destroy()
+        telaCliente(cur,conn,root)
     
     root = tk.Tk()
     root.title("Alterar Dados do Cliente")
@@ -44,7 +51,7 @@ def telaAlterarDados(cur, conn, cpf, root):
     entrada_valor = tk.Entry(root)
     entrada_valor.pack()
     
-    tk.Button(root, text="Confirmar", command = alterar_dados_cliente).pack(pady=10)
+    tk.Button(root, text="Confirmar", command = lambda: alterar_dados_cliente(cur, conn,root)).pack(pady=10)
     tk.Button(root, text="Cancelar", command = lambda: (telaClienteAcesso(cur, conn, cpf, root),root.destroy)).pack(pady=10)
     
     root.mainloop()

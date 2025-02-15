@@ -8,7 +8,7 @@ def telaHistoricoVendas(cur, conn, id, root):
 def telaAlterarDados(cur, conn, id, root):
     root.destroy()
     
-    def alterar_dados_atendente():
+    def alterar_dados_atendente(cur,conn,root):
         campo_selecionado = campo_var.get().strip()
         novo_valor = entrada_valor.get()
 
@@ -16,7 +16,8 @@ def telaAlterarDados(cur, conn, id, root):
             messagebox.showerror("Erro", f"Opção inválida! Digite um valor")
             return
         if campo_selecionado == "Nome":
-            cur.execute("UPDATE funcionario SET nome = %s WHERE id_funcionario = %s", (novo_valor, id))
+            cur.execute("UPDATE Funcionario SET nome = %s WHERE id_funcionario = %s", (novo_valor, id))
+            conn.commit()
         elif campo_selecionado == "Senha":
             cur.execute("UPDATE funcionario SET senha = %s WHERE id_funcionario = %s", (novo_valor, id))
         elif campo_selecionado == "Idade":
@@ -28,6 +29,7 @@ def telaAlterarDados(cur, conn, id, root):
         conn.commit()
         messagebox.showinfo("Sucesso", f"{campo_selecionado} alterado com sucesso!")
         root.destroy()
+        telaAtendente(cur, conn, root)
     
     root = tk.Tk()
     root.title("Alterar Dados do Atendente")
@@ -46,7 +48,7 @@ def telaAlterarDados(cur, conn, id, root):
     entrada_valor = tk.Entry(root)
     entrada_valor.pack()
     
-    tk.Button(root, text="Confirmar", command = alterar_dados_atendente).pack(pady=10)
+    tk.Button(root, text="Confirmar", command = lambda: (alterar_dados_atendente(cur, conn,root))).pack(pady=10)
     tk.Button(root, text="Cancelar", command = lambda: (telaAtendenteAcesso(cur, conn, id, root),root.destroy)).pack(pady=10)
     
     root.mainloop()

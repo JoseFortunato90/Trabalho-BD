@@ -50,7 +50,7 @@ def telaExcluirCadastro(cur, conn, id, root):
 def telaAlterarDados(cur, conn, id, root):
     root.destroy()
     
-    def alterar_dados_gerente():
+    def alterar_dados_gerente(cur, conn, root):
         campo_selecionado = campo_var.get().strip()
         novo_valor = entrada_valor.get()
 
@@ -72,6 +72,7 @@ def telaAlterarDados(cur, conn, id, root):
         conn.commit()
         messagebox.showinfo("Sucesso", f"{campo_selecionado} alterado com sucesso!")
         root.destroy()
+        telaGerente(cur, conn, root)
     
     root = tk.Tk()
     root.title("Alterar Dados do Gerente")
@@ -90,7 +91,7 @@ def telaAlterarDados(cur, conn, id, root):
     entrada_valor = tk.Entry(root)
     entrada_valor.pack()
     
-    tk.Button(root, text="Confirmar", command = alterar_dados_gerente).pack(pady=10)
+    tk.Button(root, text="Confirmar", command = lambda: alterar_dados_gerente(cur, conn,root)).pack(pady=10)
     tk.Button(root, text="Cancelar", command = lambda: (telaGerenteAcesso(cur, conn, id, root),root.destroy)).pack(pady=10)
     
     root.mainloop()
@@ -315,33 +316,41 @@ def reporItem(cur, conn, root, id):
     tk.Button(root, text="Cancelar", command = lambda: (telaGerenteAcesso(cur, conn, id, root),root.destroy)).pack(pady=10)
 
 def tela_visualizar_produtos(cur):
+    def obter_produtos(cur, filtro_tipo=None, filtro_id=None, caros_baratos=False, ordenacao=None):
+        query = "SELECT * FROM produto"
 
-
-    def obter_produtos(cur, filtro_tipo=None, filtro_id=None, caros_baratos=False):
         if caros_baratos:
-            cur.execute("""
+            query = """
                 SELECT * FROM produto 
                 WHERE preco = ANY (SELECT MAX(preco) FROM produto)
                 OR preco = ANY (SELECT MIN(preco) FROM produto)
-            """)
-        elif filtro_id:  
-            cur.execute("SELECT * FROM produto WHERE id_produto = ANY (%s)", ([filtro_id],))  
-        elif filtro_tipo: 
-            cur.execute("SELECT * FROM produto WHERE tipo_produto ILIKE %s", (filtro_tipo,))
+            """
+        elif filtro_id:
+            query = "SELECT * FROM produto WHERE id_produto = ANY (%s)"
+        elif filtro_tipo:
+            query = "SELECT * FROM produto WHERE tipo_produto ILIKE %s"
+
+        if ordenacao:
+            query += " ORDER BY preco " + ordenacao  # Adiciona ASC ou DESC conforme escolha do usuário
+
+        if filtro_id:
+            cur.execute(query, ([filtro_id],))
+        elif filtro_tipo:
+            cur.execute(query, (filtro_tipo,))
         else:
-            cur.execute("SELECT * FROM produto")  
+            cur.execute(query)
 
         return cur.fetchall()
 
-    def atualizar_tabela(cur, tree, filtro_tipo=None, filtro_id=None, caros_baratos=False):
+    def atualizar_tabela(cur, tree, filtro_tipo=None, filtro_id=None, caros_baratos=False, ordenacao=None):
         for item in tree.get_children():
             tree.delete(item)
 
-        produtos = obter_produtos(cur, filtro_tipo, filtro_id, caros_baratos)
+        produtos = obter_produtos(cur, filtro_tipo, filtro_id, caros_baratos, ordenacao)
 
         for produto in produtos:
             tree.insert("", "end", values=produto)
-   
+
     root = tk.Tk()
     root.title("Lista de Produtos")
     root.geometry("750x500")
@@ -350,36 +359,44 @@ def tela_visualizar_produtos(cur):
     tree = ttk.Treeview(root, columns=colunas, show="headings")
     
     for col in colunas:
-        tree.heading(col, text=col)  
-        tree.column(col, width=140)  
+        tree.heading(col, text=col)
+        tree.column(col, width=140)
 
     tree.pack(expand=True, fill="both")
 
     frame_filtros = tk.Frame(root)
     frame_filtros.pack(pady=10)
 
-    
+    # Filtro por tipo
     tk.Label(frame_filtros, text="Filtrar por Tipo:").grid(row=0, column=0)
     entrada_filtro_tipo = tk.Entry(frame_filtros)
     entrada_filtro_tipo.grid(row=0, column=1, padx=5)
     btn_filtrar_tipo = tk.Button(frame_filtros, text="Filtrar", command=lambda: atualizar_tabela(cur, tree, entrada_filtro_tipo.get()))
     btn_filtrar_tipo.grid(row=0, column=2, padx=5)
 
+    # Filtro por ID
     tk.Label(frame_filtros, text="Filtrar por ID:").grid(row=1, column=0)
     entrada_filtro_id = tk.Entry(frame_filtros)
     entrada_filtro_id.grid(row=1, column=1, padx=5)
-    btn_filtrar_id = tk.Button(frame_filtros, text="Pesquisar",command=lambda: atualizar_tabela(cur, tree, filtro_id=int(entrada_filtro_id.get())))
+    btn_filtrar_id = tk.Button(frame_filtros, text="Pesquisar", command=lambda: atualizar_tabela(cur, tree, filtro_id=int(entrada_filtro_id.get())))
     btn_filtrar_id.grid(row=1, column=2, padx=5)
 
+    # Ordenação por preço
+    tk.Label(frame_filtros, text="Ordenar por preço:").grid(row=2, column=0)
+    btn_asc = tk.Button(frame_filtros, text="Mais Barato → Mais Caro", command=lambda: atualizar_tabela(cur, tree, ordenacao="ASC"))
+    btn_asc.grid(row=2, column=1, padx=5)
+    btn_desc = tk.Button(frame_filtros, text="Mais Caro → Mais Barato", command=lambda: atualizar_tabela(cur, tree, ordenacao="DESC"))
+    btn_desc.grid(row=2, column=2, padx=5)
 
-    btn_caros_baratos = tk.Button(root, text="Mostrar Itens Mais Caros e Mais Baratos",command=lambda: atualizar_tabela(cur, tree, caros_baratos=True))
+    # Mostrar produtos mais caros e mais baratos
+    btn_caros_baratos = tk.Button(root, text="Mostrar Itens Mais Caros e Mais Baratos", command=lambda: atualizar_tabela(cur, tree, caros_baratos=True))
     btn_caros_baratos.pack(pady=5)
 
-
+    # Remover filtros
     btn_limpar = tk.Button(root, text="Remover Filtros", command=lambda: atualizar_tabela(cur, tree))
     btn_limpar.pack(pady=5)
 
-
+    # Fechar janela
     btn_fechar = tk.Button(root, text="Fechar", command=root.destroy)
     btn_fechar.pack(pady=10)
 
