@@ -51,6 +51,44 @@ def telaAlterarDados(cur, conn, id, root):
     
     root.mainloop()
 
+def telaHistorico(cur, id_atendente, root):
+    def obter_historico(cur, id_atendente):
+        cur.execute("""
+            SELECT p.id, c.nome, p.valor_total, p.data_pedido
+            FROM Pedido p
+            JOIN Cliente c ON p.cpf_cliente = c.cpf
+            WHERE p.id_funcionario = %s
+            ORDER BY p.data_pedido DESC
+        """, (id_atendente,))
+        return cur.fetchall()
+    
+    def atualizar_tabela():
+        for item in tree.get_children():
+            tree.delete(item)
+
+        historico = obter_historico(cur, id_atendente)
+        for pedido in historico:
+            tree.insert("", "end", values=pedido)
+    
+    root = tk.Tk()
+    root.title("Histórico de Vendas - Atendente")
+    root.geometry("600x400")
+    
+    colunas = ("ID Pedido", "Cliente", "Valor Total", "Data")
+    tree = ttk.Treeview(root, columns=colunas, show="headings")
+    
+    for col in colunas:
+        tree.heading(col, text=col)
+        tree.column(col, width=140)
+    
+    tree.pack(expand=True, fill="both")
+    
+    btn_fechar = tk.Button(root, text="Fechar", command=root.destroy)
+    btn_fechar.pack(pady=10)
+    
+    atualizar_tabela()
+    root.mainloop()
+
 def telaAtendenteAcesso(cur, conn, id, root):
     root.destroy()
     root = tk.Tk()
@@ -62,7 +100,7 @@ def telaAtendenteAcesso(cur, conn, id, root):
 
     tk.Label(root, text=f"Bem-vindo - {gerente[1]}", font=("Arial", 14)).pack(pady=10)
 
-    #tk.Button(root, text="Histórico de vendas", width=20, command= lambda: telaEstoque(cur, conn, root, id)).pack(pady=5)
+    tk.Button(root, text="Histórico de vendas", width=20, command= lambda: telaHistorico(cur, id, root)).pack(pady=5)
     tk.Button(root, text="Alterar Dados", width=20, command= lambda: telaAlterarDados(cur, conn, id, root)).pack(pady=5)
     tk.Button(root, text="Excluir Cadastro", width=20, command= lambda: telaExcluirCadastro(cur,conn,id,root)).pack(pady=5)
     tk.Button(root, text="Sair", width=20, command=lambda: (root.destroy(), telaAtendente(cur, conn, root)) ).pack(pady=20)

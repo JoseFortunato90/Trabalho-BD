@@ -1,8 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
-
-def comprar():
-    messagebox.showinfo("Tela", "Tela não implementada.")
+import telasCompras
 
 def historico_compra():
     messagebox.showinfo("Tela", "Tela não implementada.")
@@ -101,8 +99,8 @@ def telaClienteAcesso(cur, conn, cpf, root):
 
     tk.Label(root, text=f"Bem-vindo - {cliente[1]}", font=("Arial", 14)).pack(pady=10)
 
-    tk.Button(root, text="Comprar", width=20, command= comprar).pack(pady=5)
-    tk.Button(root, text="Histórico de compras", width=20, command= historico_compra).pack(pady=5)
+    tk.Button(root, text="Comprar", width=20, command= lambda: telasCompras.telaCompra(cur, conn, cpf, root)).pack(pady=5)
+    tk.Button(root, text="Histórico de compras", width=20, command= lambda: telasCompras.telaHistoricoCompras(cur, cpf)).pack(pady=5)
     tk.Button(root, text="Alterar Dados", width=20, command= lambda: telaAlterarDados(cur, conn, cpf, root)).pack(pady=5)
     tk.Button(root, text="Excluir Cadastro", width=20, command= lambda: telaExcluirCadastro(cur,conn,cpf,root)).pack(pady=5)
     tk.Button(root, text="Sair", width=20, command=lambda: (root.destroy(), telaCliente(cur, conn, root)) ).pack(pady=20)
