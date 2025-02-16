@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, simpledialog
 from tkinter import messagebox
 
 def telaExcluirCadastro(cur, conn, id, root):
@@ -94,6 +94,63 @@ def telaAlterarDados(cur, conn, id, root):
     tk.Button(root, text="Confirmar", command = lambda: alterar_dados_gerente(cur, conn,root)).pack(pady=10)
     tk.Button(root, text="Cancelar", command = lambda: (telaGerenteAcesso(cur, conn, id, root),root.destroy)).pack(pady=10)
     
+    root.mainloop()
+
+def telaEstatisticasAtendentes(cur, conn, root, id_gerente):
+    root.destroy()
+    root = tk.Tk()
+    root.title("Estatísticas de Vendas dos Atendentes")
+    root.geometry("700x400")
+
+    def obter_estatisticas(cur, id_gerente):
+        cur.execute("""
+            SELECT 
+                a.id_funcionario, 
+                f.nome, 
+                COALESCE(COUNT(p.id), 0) AS total_vendas,
+                COALESCE(SUM(p.valor_total), 0) AS valor_total_vendas,
+                COALESCE(AVG(p.valor_total), 0) AS media_valor_pedido
+            FROM Atendente a
+            JOIN Funcionario f ON a.id_funcionario = f.id_funcionario
+            JOIN Atendente_Gerente ag ON a.id_funcionario = ag.id_atendente
+            LEFT JOIN Pedido p ON a.id_funcionario = p.id_funcionario
+            WHERE ag.id_gerente = %s
+            GROUP BY a.id_funcionario, f.nome
+            ORDER BY total_vendas DESC
+        """, (id_gerente,))
+        return cur.fetchall()
+    
+    def atualizar_tabela(cur, tree):
+        for item in tree.get_children():
+            tree.delete(item)
+
+        estatisticas = obter_estatisticas(cur, id_gerente)
+
+        if not estatisticas:
+            messagebox.showinfo("Aviso", "Nenhum atendente encontrado para este gerente.")
+            telaGerenteAcesso(cur, conn, id_gerente, root)
+            return
+
+        for estat in estatisticas:
+            tree.insert("", "end", values=estat)
+
+    colunas = ("ID Atendente", "Nome", "Total Vendas", "Valor Total", "Média por Pedido")
+    tree = ttk.Treeview(root, columns=colunas, show="headings")
+
+    for col in colunas:
+        tree.heading(col, text=col)
+        tree.column(col, width=140)
+
+    tree.pack(expand=True, fill="both")
+
+    btn_atualizar = tk.Button(root, text="Atualizar", command=lambda: atualizar_tabela(cur, tree))
+    btn_atualizar.pack(pady=5)
+
+    btn_fechar = tk.Button(root, text="Fechar", command= lambda: (telaGerenteAcesso(cur, conn, id_gerente, root),root.destroy))
+    btn_fechar.pack(pady=10)
+
+    atualizar_tabela(cur, tree)
+
     root.mainloop()
 
 def contratarAtendente(cur, conn, id, root):
@@ -434,6 +491,7 @@ def telaGerenteAcesso(cur, conn, id, root):
 
     tk.Button(root, text="Estoque", width=20, command= lambda: telaEstoque(cur, conn, root, id)).pack(pady=5)
     tk.Button(root, text="Contratar atendente", width=20, command= lambda: contratarAtendente(cur, conn, id, root)).pack(pady=5)
+    tk.Button(root, text="Estásticas atendentes", width=20, command= lambda: telaEstatisticasAtendentes(cur, conn, root, id)).pack(pady=5)
     tk.Button(root, text="Alterar Dados", width=20, command= lambda: telaAlterarDados(cur, conn, id, root)).pack(pady=5)
     tk.Button(root, text="Excluir Cadastro", width=20, command= lambda: telaExcluirCadastro(cur,conn,id,root)).pack(pady=5)
     tk.Button(root, text="Sair", width=20, command=lambda: (root.destroy(), telaGerente(cur, conn, root)) ).pack(pady=20)

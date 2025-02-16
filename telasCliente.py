@@ -2,8 +2,6 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 import telasCompras
 
-def historico_compra():
-    messagebox.showinfo("Tela", "Tela não implementada.")
 
 def telaAlterarDados(cur, conn, cpf, root):
     root.destroy()
